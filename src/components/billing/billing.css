@@ -1,0 +1,21 @@
+/* src/components/billing/billing.css */
+.billing-container {
+    margin: 20px;
+  }
+  
+  .billing-table .ant-table {
+    margin: 0 10px;
+  }
+  
+  .ant-table-cell {
+    padding: 8px;
+  }
+  
+  .billing-table .ant-btn {
+    padding: 4px 8px;
+  }
+  
+  .ant-btn-primary {
+    margin-bottom: 10px;
+  }
+  

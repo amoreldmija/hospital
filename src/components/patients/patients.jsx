@@ -1,19 +1,16 @@
-// src/components/Home.js
-import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, Table, Modal, notification, Select, Space } from 'antd';
+// src/components/patients/patients.jsx
+import React from 'react';
+import { Table, Button, Modal, Form, Input, Select, notification } from 'antd';
+import { useState, useEffect } from 'react';
 import { db } from '../../firebase';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
 const Patients = () => {
-  const [patientForm] = Form.useForm();
-  const [doctorForm] = Form.useForm();
-  const [updateForm] = Form.useForm();
+  const [form] = Form.useForm();
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
-  const [isPatientModalVisible, setIsPatientModalVisible] = useState(false);
-  const [isDoctorModalVisible, setIsDoctorModalVisible] = useState(false);
-  const [isUpdateModalVisible, setIsUpdateModalVisible] = useState(false);
-  const [currentPatient, setCurrentPatient] = useState(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editingPatient, setEditingPatient] = useState(null);
 
   const fetchPatients = async () => {
     const querySnapshot = await getDocs(collection(db, 'patients'));
@@ -32,221 +29,89 @@ const Patients = () => {
     fetchDoctors();
   }, []);
 
-  const handlePatientSubmit = async (values) => {
+  const handleAddOrUpdatePatient = async (values) => {
     try {
-      await addDoc(collection(db, 'patients'), {
-        name: values.name,
-        age: parseInt(values.age),
-        disease: values.disease,
-        doctorId: values.doctorId
-      });
-      patientForm.resetFields();
-      notification.success({
-        message: 'Success',
-        description: 'Patient added successfully'
-      });
+      if (editingPatient) {
+        const patientDoc = doc(db, 'patients', editingPatient.id);
+        await updateDoc(patientDoc, values);
+        notification.success({ message: 'Success', description: 'Patient updated successfully' });
+      } else {
+        await addDoc(collection(db, 'patients'), values);
+        notification.success({ message: 'Success', description: 'Patient added successfully' });
+      }
       fetchPatients();
-      setIsPatientModalVisible(false);
+      setIsModalVisible(false);
+      setEditingPatient(null);
+      form.resetFields();
     } catch (e) {
-      console.error('Error adding document: ', e);
-      notification.error({
-        message: 'Error',
-        description: 'There was an error adding the patient'
-      });
+      notification.error({ message: 'Error', description: 'There was an error saving the patient' });
     }
   };
 
-  const handleDoctorSubmit = async (values) => {
+  const handleDeletePatient = async (id) => {
     try {
-      await addDoc(collection(db, 'doctors'), {
-        name: values.name,
-        specialty: values.specialty
-      });
-      doctorForm.resetFields();
-      notification.success({
-        message: 'Success',
-        description: 'Doctor added successfully'
-      });
-      fetchDoctors();
-      setIsDoctorModalVisible(false);
-    } catch (e) {
-      console.error('Error adding document: ', e);
-      notification.error({
-        message: 'Error',
-        description: 'There was an error adding the doctor'
-      });
-    }
-  };
-
-  const handleUpdateSubmit = async (values) => {
-    try {
-      const patientDoc = doc(db, 'patients', currentPatient.id);
-      await updateDoc(patientDoc, {
-        name: values.name,
-        age: parseInt(values.age),
-        disease: values.disease,
-        doctorId: values.doctorId
-      });
-      updateForm.resetFields();
-      notification.success({
-        message: 'Success',
-        description: 'Patient updated successfully'
-      });
-      fetchPatients();
-      setIsUpdateModalVisible(false);
-    } catch (e) {
-      console.error('Error updating document: ', e);
-      notification.error({
-        message: 'Error',
-        description: 'There was an error updating the patient'
-      });
-    }
-  };
-
-  const handleDelete = async (patientId) => {
-    try {
-      await deleteDoc(doc(db, 'patients', patientId));
-      notification.success({
-        message: 'Success',
-        description: 'Patient deleted successfully'
-      });
+      await deleteDoc(doc(db, 'patients', id));
+      notification.success({ message: 'Success', description: 'Patient deleted successfully' });
       fetchPatients();
     } catch (e) {
-      console.error('Error deleting document: ', e);
-      notification.error({
-        message: 'Error',
-        description: 'There was an error deleting the patient'
-      });
+      notification.error({ message: 'Error', description: 'There was an error deleting the patient' });
     }
   };
 
-  const showUpdateModal = (patient) => {
-    setCurrentPatient(patient);
-    updateForm.setFieldsValue({
-      name: patient.name,
-      age: patient.age,
-      disease: patient.disease,
-      doctorId: patient.doctorId
-    });
-    setIsUpdateModalVisible(true);
-  };
-
-  const patientColumns = [
-    {
-      title: 'Name',
-      dataIndex: 'name',
-      key: 'name',
-    },
-    {
-      title: 'Age',
-      dataIndex: 'age',
-      key: 'age',
-    },
-    {
-      title: 'Disease',
-      dataIndex: 'disease',
-      key: 'disease',
-    },
-    {
-      title: 'Doctor',
-      dataIndex: 'doctorId',
-      key: 'doctorId',
-      render: (doctorId) => {
+  const columns = [
+    { title: 'Name', dataIndex: 'name', key: 'name' },
+    { title: 'Date of Birth', dataIndex: 'dob', key: 'dob' },
+    { title: 'Contact Details', dataIndex: 'contact', key: 'contact' },
+    { title: 'Insurance Information', dataIndex: 'insurance', key: 'insurance' },
+    { title: 'Doctor', dataIndex: 'doctorId', key: 'doctorId', render: (doctorId) => {
         const doctor = doctors.find(doc => doc.id === doctorId);
         return doctor ? doctor.name : 'Unassigned';
       }
     },
     {
-      title: 'Actions',
-      key: 'actions',
-      render: (text, record) => (
-        <Space size="middle">
-          <Button onClick={() => showUpdateModal(record)}>Update</Button>
-          <Button onClick={() => handleDelete(record.id)} danger>Delete</Button>
-        </Space>
-      )
-    }
-  ];
-
-  const doctorColumns = [
-    {
-      title: 'Name',
-      dataIndex: 'name',
-      key: 'name',
+      title: 'Action',
+      key: 'action',
+      render: (_, record) => (
+        <>
+          <Button onClick={() => {
+            setEditingPatient(record);
+            form.setFieldsValue(record);
+            setIsModalVisible(true);
+          }}>Edit</Button>
+          <Button onClick={() => handleDeletePatient(record.id)} danger style={{ marginLeft: 10 }}>Delete</Button>
+        </>
+      ),
     },
-    {
-      title: 'Specialty',
-      dataIndex: 'specialty',
-      key: 'specialty',
-    }
   ];
-
-  const showPatientModal = () => {
-    setIsPatientModalVisible(true);
-  };
-
-  const handlePatientCancel = () => {
-    setIsPatientModalVisible(false);
-  };
-
-  const showDoctorModal = () => {
-    setIsDoctorModalVisible(true);
-  };
-
-  const handleDoctorCancel = () => {
-    setIsDoctorModalVisible(false);
-  };
-
-  const handleUpdateCancel = () => {
-    setIsUpdateModalVisible(false);
-  };
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>Home Page</h1>
-      <Button type="primary" onClick={showPatientModal}>
-        Add Patient
-      </Button>
-      <Button type="primary" onClick={showDoctorModal} style={{ marginLeft: '10px' }}>
-        Add Doctor
-      </Button>
+    <div>
+      <Button type="primary" onClick={() => setIsModalVisible(true)}>Add Patient</Button>
+      <Table dataSource={patients} columns={columns} rowKey="id" style={{ marginTop: 20 }} />
       <Modal
-        title="Add Patient"
-        visible={isPatientModalVisible}
-        onCancel={handlePatientCancel}
+        title={editingPatient ? 'Edit Patient' : 'Add Patient'}
+        visible={isModalVisible}
+        onCancel={() => {
+          setIsModalVisible(false);
+          setEditingPatient(null);
+          form.resetFields();
+        }}
         footer={null}
       >
-        <Form
-          form={patientForm}
-          layout="vertical"
-          onFinish={handlePatientSubmit}
-        >
-          <Form.Item
-            name="name"
-            label="Name"
-            rules={[{ required: true, message: 'Please enter the name' }]}
-          >
+        <Form form={form} onFinish={handleAddOrUpdatePatient}>
+          <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Please enter the name' }]}>
             <Input />
           </Form.Item>
-          <Form.Item
-            name="age"
-            label="Age"
-            rules={[{ required: true, message: 'Please enter the age' }]}
-          >
-            <Input type="number" />
-          </Form.Item>
-          <Form.Item
-            name="disease"
-            label="Disease"
-            rules={[{ required: true, message: 'Please enter the disease' }]}
-          >
+          <Form.Item name="dob" label="Date of Birth" rules={[{ required: true, message: 'Please enter the date of birth' }]}>
             <Input />
           </Form.Item>
-          <Form.Item
-            name="doctorId"
-            label="Doctor"
-            rules={[{ required: true, message: 'Please select a doctor' }]}
-          >
+          <Form.Item name="contact" label="Contact Details" rules={[{ required: true, message: 'Please enter the contact details' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="insurance" label="Insurance Information" rules={[{ required: true, message: 'Please enter the insurance information' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="doctorId" label="Doctor" rules={[{ required: true, message: 'Please select a doctor' }]}>
             <Select placeholder="Select a doctor">
               {doctors.map(doctor => (
                 <Select.Option key={doctor.id} value={doctor.id}>
@@ -257,99 +122,11 @@ const Patients = () => {
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit">
-              Add Patient
+              {editingPatient ? 'Update' : 'Add'}
             </Button>
           </Form.Item>
         </Form>
       </Modal>
-      <Modal
-        title="Add Doctor"
-        visible={isDoctorModalVisible}
-        onCancel={handleDoctorCancel}
-        footer={null}
-      >
-        <Form
-          form={doctorForm}
-          layout="vertical"
-          onFinish={handleDoctorSubmit}
-        >
-          <Form.Item
-            name="name"
-            label="Name"
-            rules={[{ required: true, message: 'Please enter the name' }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="specialty"
-            label="Specialty"
-            rules={[{ required: true, message: 'Please enter the specialty' }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit">
-              Add Doctor
-            </Button>
-          </Form.Item>
-        </Form>
-      </Modal>
-      <Modal
-        title="Update Patient"
-        visible={isUpdateModalVisible}
-        onCancel={handleUpdateCancel}
-        footer={null}
-      >
-        <Form
-          form={updateForm}
-          layout="vertical"
-          onFinish={handleUpdateSubmit}
-        >
-          <Form.Item
-            name="name"
-            label="Name"
-            rules={[{ required: true, message: 'Please enter the name' }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="age"
-            label="Age"
-            rules={[{ required: true, message: 'Please enter the age' }]}
-          >
-            <Input type="number" />
-          </Form.Item>
-          <Form.Item
-            name="disease"
-            label="Disease"
-            rules={[{ required: true, message: 'Please enter the disease' }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="doctorId"
-            label="Doctor"
-            rules={[{ required: true, message: 'Please select a doctor' }]}
-          >
-            <Select placeholder="Select a doctor">
-              {doctors.map(doctor => (
-                <Select.Option key={doctor.id} value={doctor.id}>
-                  {doctor.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit">
-              Update Patient
-            </Button>
-          </Form.Item>
-        </Form>
-      </Modal>
-      <h2>Patients</h2>
-      <Table dataSource={patients} columns={patientColumns} rowKey="id" />
-      <h2>Doctors</h2>
-      <Table dataSource={doctors} columns={doctorColumns} rowKey="id" />
     </div>
   );
 };

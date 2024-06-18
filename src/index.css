@@ -1,0 +1,25 @@
+/* src/index.css */
+body {
+    font-family: Arial, sans-serif;
+  }
+  
+  .ant-layout {
+    min-height: 100vh;
+  }
+  
+  .ant-layout-sider {
+    position: fixed;
+    height: 100%;
+  }
+  
+  .ant-layout-content {
+    padding: 24px;
+    background: #fff;
+  }
+  
+  .logo {
+    height: 32px;
+    margin: 16px;
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
