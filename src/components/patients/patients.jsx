@@ -1,9 +1,10 @@
-// src/components/patients/patients.jsx
 import React from 'react';
-import { Table, Button, Modal, Form, Input, Select, notification } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, DatePicker, notification } from 'antd';
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { Link } from 'react-router-dom';
+import moment from 'moment';
 
 const Patients = () => {
   const [form] = Form.useForm();
@@ -59,26 +60,44 @@ const Patients = () => {
   };
 
   const columns = [
-    { title: 'Name', dataIndex: 'name', key: 'name' },
+    {
+      title: 'Name',
+      dataIndex: 'name',
+      key: 'name',
+      render: (text, record) => <Link to={`/patients/${record.id}`}>{text}</Link>,
+    },
     { title: 'Date of Birth', dataIndex: 'dob', key: 'dob' },
     { title: 'Contact Details', dataIndex: 'contact', key: 'contact' },
     { title: 'Insurance Information', dataIndex: 'insurance', key: 'insurance' },
-    { title: 'Doctor', dataIndex: 'doctorId', key: 'doctorId', render: (doctorId) => {
+    {
+      title: 'Doctor',
+      dataIndex: 'doctorId',
+      key: 'doctorId',
+      render: (doctorId) => {
         const doctor = doctors.find(doc => doc.id === doctorId);
         return doctor ? doctor.name : 'Unassigned';
-      }
+      },
     },
     {
       title: 'Action',
       key: 'action',
       render: (_, record) => (
         <>
-          <Button onClick={() => {
-            setEditingPatient(record);
-            form.setFieldsValue(record);
-            setIsModalVisible(true);
-          }}>Edit</Button>
-          <Button onClick={() => handleDeletePatient(record.id)} danger style={{ marginLeft: 10 }}>Delete</Button>
+          <Button
+            onClick={() => {
+              setEditingPatient(record);
+              form.setFieldsValue({
+                ...record,
+                dob: record.dob ? moment(record.dob) : null,
+              });
+              setIsModalVisible(true);
+            }}
+          >
+            Edit
+          </Button>
+          <Button onClick={() => handleDeletePatient(record.id)} danger style={{ marginLeft: 10 }}>
+            Delete
+          </Button>
         </>
       ),
     },
@@ -86,7 +105,9 @@ const Patients = () => {
 
   return (
     <div>
-      <Button type="primary" onClick={() => setIsModalVisible(true)}>Add Patient</Button>
+      <Button type="primary" onClick={() => setIsModalVisible(true)}>
+        Add Patient
+      </Button>
       <Table dataSource={patients} columns={columns} rowKey="id" style={{ marginTop: 20 }} />
       <Modal
         title={editingPatient ? 'Edit Patient' : 'Add Patient'}
@@ -103,7 +124,7 @@ const Patients = () => {
             <Input />
           </Form.Item>
           <Form.Item name="dob" label="Date of Birth" rules={[{ required: true, message: 'Please enter the date of birth' }]}>
-            <Input />
+            <DatePicker />
           </Form.Item>
           <Form.Item name="contact" label="Contact Details" rules={[{ required: true, message: 'Please enter the contact details' }]}>
             <Input />

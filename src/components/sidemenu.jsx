@@ -1,4 +1,3 @@
-// src/components/sidemenu.jsx
 import React from 'react';
 import { Layout, Menu, Button, Typography } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
@@ -27,7 +26,7 @@ const SideMenu = () => {
       key: '1',
       label: <Link to="/">Home</Link>,
     },
-    currentUser && currentUser.role !== 'patient' && {
+    currentUser && currentUser.role === 'doctor' && {
       key: '2',
       label: <Link to="/patients">Patients</Link>,
     },
@@ -37,10 +36,18 @@ const SideMenu = () => {
     },
     currentUser && {
       key: '4',
+      label: <Link to="/appointments">Appointments</Link>,
+    },
+    currentUser && {
+      key: '5',
+      label: <Link to="/prescriptions">Prescriptions</Link>,
+    },
+    currentUser && currentUser.role !== 'patient' && {
+      key: '6',
       label: <Link to="/billing">Billing</Link>,
     },
     {
-      key: '5',
+      key: '7',
       label: (
         <Button type="link" onClick={handleLogout} style={{ color: 'inherit', padding: 0 }}>
           Logout
