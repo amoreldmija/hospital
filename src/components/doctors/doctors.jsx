@@ -1,40 +1,43 @@
 // src/components/doctors/Doctors.jsx
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, notification } from 'antd';
-import { getDocs, collection, addDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { Table, Button, Modal, Form, Input, Select, notification, Popconfirm } from 'antd';
 import { db } from '../../firebase';
+import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthProvider';
 
 const Doctors = () => {
-  const [doctorsData, setDoctorsData] = useState([]);
-  const [isModalVisible, setIsModalVisible] = useState(false);
   const [form] = Form.useForm();
+  const [doctors, setDoctors] = useState([]);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editingDoctor, setEditingDoctor] = useState(null);
   const { currentUser } = useAuth();
 
-  const fetchDoctorsData = async () => {
+  const fetchDoctors = async () => {
     const querySnapshot = await getDocs(collection(db, 'doctors'));
-    const doctorsList = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    setDoctorsData(doctorsList);
+    const doctorsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    setDoctors(doctorsList);
   };
 
   useEffect(() => {
-    fetchDoctorsData();
+    fetchDoctors();
   }, []);
 
   const handleAddOrUpdateDoctor = async (values) => {
     try {
-      if (values.id) {
-        const doctorDoc = doc(db, 'doctors', values.id);
+      if (editingDoctor) {
+        const doctorDoc = doc(db, 'doctors', editingDoctor.id);
         await updateDoc(doctorDoc, values);
         notification.success({ message: 'Success', description: 'Doctor updated successfully' });
       } else {
         await addDoc(collection(db, 'doctors'), values);
         notification.success({ message: 'Success', description: 'Doctor added successfully' });
       }
-      fetchDoctorsData();
+      fetchDoctors();
       setIsModalVisible(false);
+      setEditingDoctor(null);
       form.resetFields();
     } catch (e) {
+      console.error('Error adding/updating doctor:', e);
       notification.error({ message: 'Error', description: 'There was an error saving the doctor information' });
     }
   };
@@ -43,8 +46,9 @@ const Doctors = () => {
     try {
       await deleteDoc(doc(db, 'doctors', id));
       notification.success({ message: 'Success', description: 'Doctor deleted successfully' });
-      fetchDoctorsData();
+      fetchDoctors();
     } catch (e) {
+      console.error('Error deleting doctor:', e);
       notification.error({ message: 'Error', description: 'There was an error deleting the doctor information' });
     }
   };
@@ -58,13 +62,21 @@ const Doctors = () => {
       key: 'action',
       render: (_, record) => (
         <>
-          {currentUser.role === 'doctor' && (
+          {currentUser.role === 'admin' && (
             <>
               <Button onClick={() => {
+                setEditingDoctor(record);
                 form.setFieldsValue(record);
                 setIsModalVisible(true);
               }}>Edit</Button>
-              <Button onClick={() => handleDeleteDoctor(record.id)} danger style={{ marginLeft: 10 }}>Delete</Button>
+              <Popconfirm
+                title="Are you sure to delete this doctor?"
+                onConfirm={() => handleDeleteDoctor(record.id)}
+                okText="Yes"
+                cancelText="No"
+              >
+                <Button danger style={{ marginLeft: 10 }}>Delete</Button>
+              </Popconfirm>
             </>
           )}
         </>
@@ -74,11 +86,11 @@ const Doctors = () => {
 
   return (
     <div className="doctors-container">
-      {currentUser.role === 'doctor' && (
+      {currentUser.role === 'admin' && (
         <Button type="primary" onClick={() => setIsModalVisible(true)}>Add Doctor</Button>
       )}
       <Table
-        dataSource={doctorsData}
+        dataSource={doctors}
         columns={columns}
         rowKey="id"
         pagination={{ pageSize: 5 }}
@@ -86,27 +98,28 @@ const Doctors = () => {
         className="doctors-table"
       />
       <Modal
-        title="Add/Edit Doctor"
+        title={editingDoctor ? 'Edit Doctor' : 'Add Doctor'}
         open={isModalVisible}
-        onCancel={() => setIsModalVisible(false)}
+        onCancel={() => {
+          setIsModalVisible(false);
+          setEditingDoctor(null);
+          form.resetFields();
+        }}
         footer={null}
       >
         <Form form={form} onFinish={handleAddOrUpdateDoctor}>
-          <Form.Item name="id" hidden>
+          <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Please enter the name' }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="name" label="Name" rules={[{ required: true, message: "Please input the doctor's name!" }]}>
+          <Form.Item name="specialization" label="Specialization" rules={[{ required: true, message: 'Please enter the specialization' }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="specialization" label="Specialization" rules={[{ required: true, message: "Please input the doctor's specialization!" }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="contact" label="Contact" rules={[{ required: true, message: "Please input the doctor's contact information!" }]}>
+          <Form.Item name="contact" label="Contact" rules={[{ required: true, message: 'Please enter the contact' }]}>
             <Input />
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit">
-              {form.getFieldValue('id') ? 'Update' : 'Add'}
+              {editingDoctor ? 'Update' : 'Add'}
             </Button>
           </Form.Item>
         </Form>

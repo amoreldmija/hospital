@@ -26,7 +26,7 @@ const SideMenu = () => {
       key: '1',
       label: <Link to="/">Home</Link>,
     },
-    currentUser && currentUser.role === 'doctor' && {
+    currentUser && (currentUser.role === 'doctor' || currentUser.role === 'admin') && {
       key: '2',
       label: <Link to="/patients">Patients</Link>,
     },
@@ -46,8 +46,12 @@ const SideMenu = () => {
       key: '6',
       label: <Link to="/billing">Billing</Link>,
     },
-    {
+    currentUser && currentUser.role === 'admin' && {
       key: '7',
+      label: <Link to="/user-management">Users</Link>,
+    },
+    {
+      key: '8',
       label: (
         <Button type="link" onClick={handleLogout} style={{ color: 'inherit', padding: 0 }}>
           Logout

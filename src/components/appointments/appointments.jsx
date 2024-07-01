@@ -1,9 +1,11 @@
+// src/components/appointments/appointments.jsx
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, notification, DatePicker, Tag, Popconfirm } from 'antd';
 import { CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { db } from '../../firebase';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, orderBy, limit } from 'firebase/firestore';
 import moment from 'moment';
+import { useAuth } from '../../contexts/AuthProvider';
 
 const Appointments = () => {
   const [form] = Form.useForm();
@@ -12,6 +14,7 @@ const Appointments = () => {
   const [doctors, setDoctors] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState(null);
+  const { currentUser } = useAuth();
 
   const fetchAppointments = async () => {
     const querySnapshot = await getDocs(collection(db, 'appointments'));
@@ -21,13 +24,13 @@ const Appointments = () => {
 
   const fetchPatients = async () => {
     const querySnapshot = await getDocs(collection(db, 'patients'));
-    const patientsList = querySnapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+    const patientsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     setPatients(patientsList);
   };
 
   const fetchDoctors = async () => {
     const querySnapshot = await getDocs(collection(db, 'doctors'));
-    const doctorsList = querySnapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+    const doctorsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     setDoctors(doctorsList);
   };
 
@@ -145,19 +148,21 @@ const Appointments = () => {
       key: 'action',
       render: (_, record) => (
         <>
-          {!record.approved && (
+          {currentUser.role === 'doctor' && !record.approved && (
             <Button onClick={() => handleApproveAppointment(record.id)} style={{ marginRight: 10 }}>
               Approve
             </Button>
           )}
-          <Button onClick={() => {
-            setEditingAppointment(record);
-            form.setFieldsValue({
-              ...record,
-              date: moment(record.date),
-            });
-            setIsModalVisible(true);
-          }} style={{ marginRight: 10 }}>Edit</Button>
+          {currentUser.role === 'doctor' && (
+            <Button onClick={() => {
+              setEditingAppointment(record);
+              form.setFieldsValue({
+                ...record,
+                date: moment(record.date),
+              });
+              setIsModalVisible(true);
+            }} style={{ marginRight: 10 }}>Edit</Button>
+          )}
           <Popconfirm
             title="Are you sure to delete this appointment?"
             onConfirm={() => handleDeleteAppointment(record.id)}
@@ -173,7 +178,9 @@ const Appointments = () => {
 
   return (
     <div className="appointments-container">
-      <Button type="primary" onClick={() => setIsModalVisible(true)}>Add Appointment</Button>
+      {currentUser.role === 'admin' || currentUser.role === 'patient' ? (
+        <Button type="primary" onClick={() => setIsModalVisible(true)}>Add Appointment</Button>
+      ) : null}
       <Table
         dataSource={appointments}
         columns={columns}
@@ -193,15 +200,21 @@ const Appointments = () => {
         footer={null}
       >
         <Form form={form} onFinish={handleAddOrUpdateAppointment}>
-          <Form.Item name="patient" label="Patient" rules={[{ required: true, message: 'Please select the patient' }]}>
-            <Select placeholder="Select a patient">
-              {patients.map(patient => (
-                <Select.Option key={patient.id} value={patient.name}>
-                  {patient.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
+          {currentUser.role === 'admin' ? (
+            <Form.Item name="patient" label="Patient" rules={[{ required: true, message: 'Please select the patient' }]}>
+              <Select placeholder="Select a patient">
+                {patients.map(patient => (
+                  <Select.Option key={patient.id} value={patient.name}>
+                    {patient.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          ) : (
+            <Form.Item name="patient" label="Patient" initialValue={currentUser.name}>
+              <Input value={currentUser.name} disabled />
+            </Form.Item>
+          )}
           <Form.Item name="doctor" label="Doctor" rules={[{ required: true, message: 'Please select the doctor' }]}>
             <Select placeholder="Select a doctor">
               {doctors.map(doctor => (

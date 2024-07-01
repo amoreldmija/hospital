@@ -4,13 +4,14 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Layout } from 'antd';
 import Home from './components/home/home';
 import Patients from './components/patients/patients';
-import PatientDetail from './components/patients/PatientDetail'; // Import the PatientDetail component
+import PatientDetail from './components/patients/PatientDetail';
 import Doctors from './components/doctors/doctors';
 import Billing from './components/billing/billing';
 import Appointments from './components/appointments/appointments';
 import Login from './components/auth/login';
 import Signup from './components/auth/signup';
 import CreateAdmin from './components/admin/CreateAdmin';
+import UserManagement from './components/admin/UserManagement';
 import { AuthProvider, useAuth } from './contexts/AuthProvider';
 import PrivateRoute from './components/PrivateRoute';
 import RoleBasedRoute from './components/RoleBasedRoute';
@@ -42,7 +43,7 @@ const AppLayout = () => {
               <Route
                 path="/patients"
                 element={
-                  <RoleBasedRoute requiredRoles={['doctor']}>
+                  <RoleBasedRoute requiredRoles={['doctor', 'admin']}>
                     <Patients />
                   </RoleBasedRoute>
                 }
@@ -50,7 +51,7 @@ const AppLayout = () => {
               <Route
                 path="/patients/:id"
                 element={
-                  <RoleBasedRoute requiredRoles={['doctor']}>
+                  <RoleBasedRoute requiredRoles={['doctor', 'admin']}>
                     <PatientDetail />
                   </RoleBasedRoute>
                 }
@@ -58,7 +59,7 @@ const AppLayout = () => {
               <Route
                 path="/doctors"
                 element={
-                  <RoleBasedRoute requiredRoles={['patient', 'doctor']}>
+                  <RoleBasedRoute requiredRoles={['patient', 'doctor', 'admin']}>
                     <Doctors />
                   </RoleBasedRoute>
                 }
@@ -66,7 +67,7 @@ const AppLayout = () => {
               <Route
                 path="/billing"
                 element={
-                  <RoleBasedRoute requiredRoles={['patient', 'doctor']}>
+                  <RoleBasedRoute requiredRoles={['patient', 'doctor', 'admin']}>
                     <Billing />
                   </RoleBasedRoute>
                 }
@@ -74,7 +75,7 @@ const AppLayout = () => {
               <Route
                 path="/appointments"
                 element={
-                  <RoleBasedRoute requiredRoles={['doctor', 'patient']}>
+                  <RoleBasedRoute requiredRoles={['doctor', 'patient', 'admin']}>
                     <Appointments />
                   </RoleBasedRoute>
                 }
@@ -82,7 +83,7 @@ const AppLayout = () => {
               <Route
                 path="/prescriptions"
                 element={
-                  <RoleBasedRoute requiredRoles={['doctor', 'patient']}>
+                  <RoleBasedRoute requiredRoles={['doctor', 'patient', 'admin']}>
                     <Prescriptions />
                   </RoleBasedRoute>
                 }
@@ -92,6 +93,14 @@ const AppLayout = () => {
                 element={
                   <RoleBasedRoute requiredRoles={['admin']}>
                     <CreateAdmin />
+                  </RoleBasedRoute>
+                }
+              />
+              <Route
+                path="/user-management"
+                element={
+                  <RoleBasedRoute requiredRoles={['admin']}>
+                    <UserManagement />
                   </RoleBasedRoute>
                 }
               />

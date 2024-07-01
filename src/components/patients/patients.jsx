@@ -1,8 +1,8 @@
-import React from 'react';
+// src/components/patients/Patients.jsx
+import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, DatePicker, notification } from 'antd';
-import { useState, useEffect } from 'react';
 import { db } from '../../firebase';
-import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 import moment from 'moment';
 
@@ -14,7 +14,8 @@ const Patients = () => {
   const [editingPatient, setEditingPatient] = useState(null);
 
   const fetchPatients = async () => {
-    const querySnapshot = await getDocs(collection(db, 'patients'));
+    const q = query(collection(db, 'users'), where('role', '==', 'patient'));
+    const querySnapshot = await getDocs(q);
     const patientsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     setPatients(patientsList);
   };
@@ -61,14 +62,17 @@ const Patients = () => {
 
   const columns = [
     {
-      title: 'Name',
-      dataIndex: 'name',
-      key: 'name',
-      render: (text, record) => <Link to={`/patients/${record.id}`}>{text}</Link>,
+      title: 'First Name',
+      dataIndex: 'firstName',
+      key: 'firstName',
     },
-    { title: 'Date of Birth', dataIndex: 'dob', key: 'dob' },
-    { title: 'Contact Details', dataIndex: 'contact', key: 'contact' },
-    { title: 'Insurance Information', dataIndex: 'insurance', key: 'insurance' },
+    {
+      title: 'Last Name',
+      dataIndex: 'lastName',
+      key: 'lastName',
+    },
+    { title: 'Email', dataIndex: 'email', key: 'email' },
+    { title: 'Contact Number', dataIndex: 'contactNumber', key: 'contactNumber' },
     {
       title: 'Doctor',
       dataIndex: 'doctorId',
@@ -88,7 +92,6 @@ const Patients = () => {
               setEditingPatient(record);
               form.setFieldsValue({
                 ...record,
-                dob: record.dob ? moment(record.dob) : null,
               });
               setIsModalVisible(true);
             }}
@@ -120,16 +123,16 @@ const Patients = () => {
         footer={null}
       >
         <Form form={form} onFinish={handleAddOrUpdatePatient}>
-          <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Please enter the name' }]}>
+          <Form.Item name="firstName" label="First Name" rules={[{ required: true, message: 'Please enter the first name' }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="dob" label="Date of Birth" rules={[{ required: true, message: 'Please enter the date of birth' }]}>
-            <DatePicker />
-          </Form.Item>
-          <Form.Item name="contact" label="Contact Details" rules={[{ required: true, message: 'Please enter the contact details' }]}>
+          <Form.Item name="lastName" label="Last Name" rules={[{ required: true, message: 'Please enter the last name' }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="insurance" label="Insurance Information" rules={[{ required: true, message: 'Please enter the insurance information' }]}>
+          <Form.Item name="email" label="Email" rules={[{ required: true, message: 'Please enter the email' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="contactNumber" label="Contact Number" rules={[{ required: true, message: 'Please enter the contact number' }]}>
             <Input />
           </Form.Item>
           <Form.Item name="doctorId" label="Doctor" rules={[{ required: true, message: 'Please select a doctor' }]}>

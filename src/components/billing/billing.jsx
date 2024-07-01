@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, notification, Tag, Popconfirm } from 'antd';
 import { db } from '../../firebase';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, getDoc } from 'firebase/firestore';
-import { CheckCircleOutlined, CloseCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 
 const services = [
   'General Consultation',
@@ -28,7 +28,7 @@ const Billing = () => {
       const appointmentDoc = await getDoc(doc(db, 'appointments', billing.appointmentId));
       return {
         ...billing,
-        appointmentCustomId: appointmentDoc.data().appointmentId, // use human-readable appointment ID
+        appointmentCustomId: appointmentDoc.data()?.appointmentId || 'Unknown', // use human-readable appointment ID
         patientName: appointmentDoc.data()?.patient || 'Unknown',
       };
     }));

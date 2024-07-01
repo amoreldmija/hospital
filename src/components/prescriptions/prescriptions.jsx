@@ -1,8 +1,9 @@
+// src/components/prescriptions/prescriptions.jsx
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, notification } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, notification, Popconfirm } from 'antd';
 import { db } from '../../firebase';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, getDoc } from 'firebase/firestore';
-import { Popconfirm } from 'antd';
+import { useAuth } from '../../contexts/AuthProvider';
 
 const Prescriptions = () => {
   const [form] = Form.useForm();
@@ -10,6 +11,7 @@ const Prescriptions = () => {
   const [appointments, setAppointments] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingPrescription, setEditingPrescription] = useState(null);
+  const { currentUser } = useAuth();
 
   const fetchPrescriptions = async () => {
     const querySnapshot = await getDocs(collection(db, 'prescriptions'));
@@ -18,7 +20,7 @@ const Prescriptions = () => {
       const appointmentDoc = await getDoc(doc(db, 'appointments', prescription.appointmentId));
       return {
         ...prescription,
-        appointmentId: appointmentDoc.data().appointmentId, // use human-readable appointment ID
+        appointmentId: appointmentDoc.data()?.appointmentId || 'Unknown',
         patientName: appointmentDoc.data()?.patient || 'Unknown',
       };
     }));
@@ -91,11 +93,13 @@ const Prescriptions = () => {
       key: 'action',
       render: (_, record) => (
         <>
-          <Button onClick={() => {
-            setEditingPrescription(record);
-            form.setFieldsValue(record);
-            setIsModalVisible(true);
-          }}>Edit</Button>
+          {currentUser.role === 'doctor' && (
+            <Button onClick={() => {
+              setEditingPrescription(record);
+              form.setFieldsValue(record);
+              setIsModalVisible(true);
+            }}>Edit</Button>
+          )}
           <Popconfirm
             title="Are you sure to delete this prescription?"
             onConfirm={() => handleDeletePrescription(record.id)}
@@ -111,7 +115,9 @@ const Prescriptions = () => {
 
   return (
     <div className="prescriptions-container">
-      <Button type="primary" onClick={() => setIsModalVisible(true)}>Add Prescription</Button>
+      {currentUser.role === 'doctor' && (
+        <Button type="primary" onClick={() => setIsModalVisible(true)}>Add Prescription</Button>
+      )}
       <Table
         dataSource={prescriptions}
         columns={columns}
