@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, notification, DatePicker, Tag, Popconfirm } from 'antd';
 import { CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { db } from '../../firebase';
-import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, orderBy, limit, getDoc } from 'firebase/firestore';
 import moment from 'moment';
 import { useAuth } from '../../contexts/AuthProvider';
 
@@ -18,13 +18,26 @@ const Appointments = () => {
 
   const fetchAppointments = async () => {
     const querySnapshot = await getDocs(collection(db, 'appointments'));
-    const appointmentsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const appointmentsList = await Promise.all(
+      querySnapshot.docs.map(async (appointmentDoc) => {
+        const appointmentData = appointmentDoc.data();
+        const doctorDoc = await getDoc(doc(db, 'doctors', appointmentData.doctor));
+        const doctorData = doctorDoc.data();
+        return {
+          id: appointmentDoc.id,
+          ...appointmentData,
+          doctorName: doctorData ? `${doctorData.firstName} ${doctorData.lastName}` : 'Unknown Doctor',
+        };
+      })
+    );
     setAppointments(appointmentsList);
   };
 
   const fetchPatients = async () => {
-    const querySnapshot = await getDocs(collection(db, 'patients'));
-    const patientsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const querySnapshot = await getDocs(collection(db, 'users')); // Fetching from users collection
+    const patientsList = querySnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(user => user.role === 'patient'); // Only patients
     setPatients(patientsList);
   };
 
@@ -129,12 +142,12 @@ const Appointments = () => {
   const columns = [
     { title: 'ID', dataIndex: 'appointmentId', key: 'appointmentId' },
     { title: 'Patient', dataIndex: 'patient', key: 'patient' },
-    { title: 'Doctor', dataIndex: 'doctor', key: 'doctor' },
+    { title: 'Doctor', dataIndex: 'doctorName', key: 'doctorName' },
     {
       title: 'Date',
       dataIndex: 'date',
       key: 'date',
-      render: (text) => moment(text).format('YYYY-MM-DD HH:mm'),
+      render: (text) => moment(text).format('DD-MM-YYYY HH:mm'),
     },
     { title: 'Reason', dataIndex: 'reason', key: 'reason' },
     {
@@ -204,22 +217,22 @@ const Appointments = () => {
             <Form.Item name="patient" label="Patient" rules={[{ required: true, message: 'Please select the patient' }]}>
               <Select placeholder="Select a patient">
                 {patients.map(patient => (
-                  <Select.Option key={patient.id} value={patient.name}>
-                    {patient.name}
+                  <Select.Option key={patient.id} value={`${patient.firstName} ${patient.lastName}`}>
+                    {patient.firstName} {patient.lastName}
                   </Select.Option>
                 ))}
               </Select>
             </Form.Item>
           ) : (
-            <Form.Item name="patient" label="Patient" initialValue={currentUser.name}>
-              <Input value={currentUser.name} disabled />
+            <Form.Item name="patient" label="Patient" initialValue={`${currentUser.firstName} ${currentUser.lastName}`}>
+              <Input value={`${currentUser.firstName} ${currentUser.lastName}`} disabled />
             </Form.Item>
           )}
           <Form.Item name="doctor" label="Doctor" rules={[{ required: true, message: 'Please select the doctor' }]}>
             <Select placeholder="Select a doctor">
               {doctors.map(doctor => (
-                <Select.Option key={doctor.id} value={doctor.name}>
-                  {doctor.name}
+                <Select.Option key={doctor.id} value={doctor.id}>
+                  {doctor.firstName} {doctor.lastName} - {doctor.position}
                 </Select.Option>
               ))}
             </Select>
@@ -230,7 +243,7 @@ const Appointments = () => {
                 format: 'HH:mm',
                 minuteStep: 30,
               }}
-              format="YYYY-MM-DD HH:mm"
+              format="DD-MM-YYYY HH:mm"
             />
           </Form.Item>
           <Form.Item name="reason" label="Reason" rules={[{ required: true, message: 'Please enter the reason' }]}>

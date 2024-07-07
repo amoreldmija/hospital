@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, notification } from 'antd';
 import { db, auth } from '../../firebase';
-import { collection, getDocs, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { collection, getDocs, updateDoc, deleteDoc, doc, setDoc, getDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, deleteUser } from 'firebase/auth';
 
 const UserManagement = () => {
   const [form] = Form.useForm();
   const [users, setUsers] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [adminEmail, setAdminEmail] = useState('admin@gmail.com');
-  const [adminPassword, setAdminPassword] = useState('123456'); // Change this to your admin password
+  const [adminEmail] = useState('admin@gmail.com');
+  const [adminPassword] = useState('123456'); // Change this to your admin password
 
   const fetchUsers = async () => {
     const querySnapshot = await getDocs(collection(db, 'users'));
@@ -43,16 +43,37 @@ const UserManagement = () => {
     }
   };
 
-  const handleDeleteUser = async (id) => {
+  const handleDeleteUser = async (id, email) => {
     try {
+      // Re-authenticate as the admin
+      const adminCredential = await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+
+      // Get the user document
+      const userDocRef = doc(db, 'users', id);
+      const userDocSnapshot = await getDoc(userDocRef);
+
+      if (!userDocSnapshot.exists()) {
+        throw new Error('User does not exist');
+      }
+
+      // Delete the user from Firestore
+      await deleteDoc(userDocRef);
+
+      // Sign in as the user to be deleted
+      const userCredential = await signInWithEmailAndPassword(auth, email, 'user-password'); // replace 'user-password' with the actual password handling logic
+      const user = userCredential.user;
+
+      // Delete the user authentication record
+      await deleteUser(user);
+
+      // Re-authenticate as admin
       await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
-      await deleteDoc(doc(db, 'users', id));
-      await auth.currentUser.delete();
+
       notification.success({ message: 'Success', description: 'User deleted successfully' });
       fetchUsers();
     } catch (e) {
       console.error('Error deleting user:', e);
-      notification.error({ message: 'Error', description: 'There was an error deleting the user' });
+      notification.error({ message: 'Error', description: `There was an error deleting the user: ${e.message}` });
     }
   };
 
@@ -72,7 +93,7 @@ const UserManagement = () => {
             form.setFieldsValue(record);
             setIsModalVisible(true);
           }}>Edit</Button>
-          <Button onClick={() => handleDeleteUser(record.id)} danger style={{ marginLeft: 10 }}>Delete</Button>
+          <Button onClick={() => handleDeleteUser(record.id, record.email)} danger style={{ marginLeft: 10 }}>Delete</Button>
         </>
       ),
     },

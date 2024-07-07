@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Layout, Menu, Button, Typography } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthProvider';
@@ -8,9 +8,20 @@ import { auth } from '../firebase';
 const { Sider } = Layout;
 const { Text } = Typography;
 
+const loadGoogleFonts = () => {
+  const link = document.createElement('link');
+  link.href = 'https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap';
+  link.rel = 'stylesheet';
+  document.head.appendChild(link);
+};
+
 const SideMenu = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+
+  useEffect(() => {
+    loadGoogleFonts();
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -42,7 +53,7 @@ const SideMenu = () => {
       key: '5',
       label: <Link to="/prescriptions">Prescriptions</Link>,
     },
-    currentUser && currentUser.role !== 'patient' && {
+    currentUser && (currentUser.role === 'admin' || currentUser.role === 'patient') && {
       key: '6',
       label: <Link to="/billing">Billing</Link>,
     },
@@ -58,14 +69,16 @@ const SideMenu = () => {
         </Button>
       ),
     },
-  ].filter(Boolean); // Removes undefined items
+  ].filter(Boolean);
 
   return (
     <Sider style={{ height: '100vh', position: 'fixed', left: 0 }}>
-      <div className="logo" style={{ height: '32px', background: 'rgba(255, 255, 255, 0.2)', margin: '16px' }} />
+      <div className="logo" style={{ marginTop: '10px', textAlign: 'left', paddingLeft: '16px' }}>
+        <Text style={{ fontFamily: 'Montserrat', fontWeight: 'bold', fontSize: '24px', color: '#fff' }}>DocCRM</Text>
+      </div>
       <Menu theme="dark" mode="inline" defaultSelectedKeys={['1']} items={menuItems} />
       <div style={{ padding: '16px', color: '#fff' }}>
-        <Text>Role: {currentUser?.role}</Text>
+        <Text style={{ color: '#fff' }}>Role: {currentUser?.role}</Text>
       </div>
     </Sider>
   );

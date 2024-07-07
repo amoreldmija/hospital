@@ -1,10 +1,8 @@
 // src/components/patients/Patients.jsx
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, DatePicker, notification } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, notification } from 'antd';
 import { db } from '../../firebase';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
-import { Link } from 'react-router-dom';
-import moment from 'moment';
 
 const Patients = () => {
   const [form] = Form.useForm();
@@ -33,12 +31,21 @@ const Patients = () => {
 
   const handleAddOrUpdatePatient = async (values) => {
     try {
+      const patientData = {
+        firstName: values.firstName,
+        lastName: values.lastName,
+        email: values.email,
+        contactNumber: values.contactNumber,
+        doctorId: values.doctorId,
+        role: 'patient',  // Ensure the role is set to 'patient'
+      };
+
       if (editingPatient) {
-        const patientDoc = doc(db, 'patients', editingPatient.id);
-        await updateDoc(patientDoc, values);
+        const patientDoc = doc(db, 'users', editingPatient.id);
+        await updateDoc(patientDoc, patientData);
         notification.success({ message: 'Success', description: 'Patient updated successfully' });
       } else {
-        await addDoc(collection(db, 'patients'), values);
+        await addDoc(collection(db, 'users'), patientData);
         notification.success({ message: 'Success', description: 'Patient added successfully' });
       }
       fetchPatients();
@@ -52,7 +59,7 @@ const Patients = () => {
 
   const handleDeletePatient = async (id) => {
     try {
-      await deleteDoc(doc(db, 'patients', id));
+      await deleteDoc(doc(db, 'users', id));
       notification.success({ message: 'Success', description: 'Patient deleted successfully' });
       fetchPatients();
     } catch (e) {
@@ -79,7 +86,7 @@ const Patients = () => {
       key: 'doctorId',
       render: (doctorId) => {
         const doctor = doctors.find(doc => doc.id === doctorId);
-        return doctor ? doctor.name : 'Unassigned';
+        return doctor ? `${doctor.firstName} ${doctor.lastName}` : 'Unassigned';
       },
     },
     {
@@ -114,7 +121,7 @@ const Patients = () => {
       <Table dataSource={patients} columns={columns} rowKey="id" style={{ marginTop: 20 }} />
       <Modal
         title={editingPatient ? 'Edit Patient' : 'Add Patient'}
-        visible={isModalVisible}
+        open={isModalVisible}
         onCancel={() => {
           setIsModalVisible(false);
           setEditingPatient(null);
@@ -135,11 +142,11 @@ const Patients = () => {
           <Form.Item name="contactNumber" label="Contact Number" rules={[{ required: true, message: 'Please enter the contact number' }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="doctorId" label="Doctor" rules={[{ required: true, message: 'Please select a doctor' }]}>
+          <Form.Item name="doctorId" label="Doctor" rules={[{ required: true, message: 'Please select the doctor' }]}>
             <Select placeholder="Select a doctor">
               {doctors.map(doctor => (
                 <Select.Option key={doctor.id} value={doctor.id}>
-                  {doctor.name}
+                  {doctor.firstName} {doctor.lastName}
                 </Select.Option>
               ))}
             </Select>

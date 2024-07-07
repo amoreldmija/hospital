@@ -87,7 +87,7 @@ const PatientDetail = () => {
   };
 
   const columnsAppointments = [
-    { title: 'Date', dataIndex: 'date', key: 'date', render: (text) => moment(text).format('YYYY-MM-DD HH:mm') },
+    { title: 'Date', dataIndex: 'date', key: 'date', render: (text) => moment(text).format('DD-MM-YYYY HH:mm') },
     { title: 'Doctor', dataIndex: 'doctor', key: 'doctor' },
     { title: 'Reason', dataIndex: 'reason', key: 'reason' },
     { title: 'Status', dataIndex: 'approved', key: 'approved', render: (text, record) => renderStatusTag(record.approved ? 'Approved' : 'Pending') },

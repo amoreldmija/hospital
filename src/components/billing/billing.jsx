@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, notification, Tag, Popconfirm } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, notification, Tag, Popconfirm, DatePicker } from 'antd';
 import { db } from '../../firebase';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import moment from 'moment';
+import { useAuth } from '../../contexts/AuthProvider';
 
 const services = [
   'General Consultation',
@@ -20,6 +22,7 @@ const Billing = () => {
   const [appointments, setAppointments] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingBilling, setEditingBilling] = useState(null);
+  const { currentUser } = useAuth();
 
   const fetchBillings = async () => {
     const querySnapshot = await getDocs(collection(db, 'billings'));
@@ -28,7 +31,7 @@ const Billing = () => {
       const appointmentDoc = await getDoc(doc(db, 'appointments', billing.appointmentId));
       return {
         ...billing,
-        appointmentCustomId: appointmentDoc.data()?.appointmentId || 'Unknown', // use human-readable appointment ID
+        appointmentCustomId: appointmentDoc.data()?.appointmentId || 'Unknown',
         patientName: appointmentDoc.data()?.patient || 'Unknown',
       };
     }));
@@ -39,7 +42,7 @@ const Billing = () => {
     const querySnapshot = await getDocs(collection(db, 'appointments'));
     const appointmentsList = querySnapshot.docs.map(doc => ({
       id: doc.id,
-      appointmentId: doc.data().appointmentId, // Fetching the actual appointment ID
+      appointmentId: doc.data().appointmentId,
       patient: doc.data().patient,
     }));
     setAppointments(appointmentsList);
@@ -58,7 +61,8 @@ const Billing = () => {
       const billingData = {
         ...values,
         patientName: appointmentData.patient,
-        invoiceId: editingBilling ? editingBilling.invoiceId : `INV-${Date.now()}`
+        invoiceId: editingBilling ? editingBilling.invoiceId : `INV-${Date.now()}`,
+        invoiceDate: values.invoiceDate.toISOString(),
       };
 
       if (editingBilling) {
@@ -108,12 +112,23 @@ const Billing = () => {
 
   const columns = [
     {
+      title: 'Invoice Number',
+      dataIndex: 'invoiceId',
+      key: 'invoiceId',
+    },
+    {
+      title: 'Invoice Date',
+      dataIndex: 'invoiceDate',
+      key: 'invoiceDate',
+      render: (text) => moment(text).format('DD-MM-YYYY'),
+    },
+    {
       title: 'Appointment',
       dataIndex: 'appointmentId',
       key: 'appointmentId',
-      render: (text, record) => `ID: ${record.appointmentCustomId} - ${record.patientName}`, // Displaying actual appointment ID
+      render: (text, record) => `ID: ${record.appointmentCustomId} - ${record.patientName}`,
     },
-    { title: 'Service Rendered', dataIndex: 'serviceRendered', key: 'serviceRendered' },
+    { title: 'Service', dataIndex: 'serviceRendered', key: 'serviceRendered' },
     { title: 'Amount', dataIndex: 'amount', key: 'amount', render: (text) => `${text} €` },
     { title: 'Insurance Coverage', dataIndex: 'insuranceCoverage', key: 'insuranceCoverage' },
     {
@@ -127,19 +142,26 @@ const Billing = () => {
       key: 'action',
       render: (_, record) => (
         <>
-          <Button onClick={() => {
-            setEditingBilling(record);
-            form.setFieldsValue(record);
-            setIsModalVisible(true);
-          }}>Edit</Button>
-          <Popconfirm
-            title="Are you sure to delete this billing?"
-            onConfirm={() => handleDeleteBilling(record.id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button danger style={{ marginLeft: 10 }}>Delete</Button>
-          </Popconfirm>
+          {currentUser?.role === 'admin' && (
+            <>
+              <Button onClick={() => {
+                setEditingBilling(record);
+                form.setFieldsValue({
+                  ...record,
+                  invoiceDate: moment(record.invoiceDate),
+                });
+                setIsModalVisible(true);
+              }}>Edit</Button>
+              <Popconfirm
+                title="Are you sure to delete this billing?"
+                onConfirm={() => handleDeleteBilling(record.id)}
+                okText="Yes"
+                cancelText="No"
+              >
+                <Button danger style={{ marginLeft: 10 }}>Delete</Button>
+              </Popconfirm>
+            </>
+          )}
         </>
       ),
     },
@@ -147,7 +169,9 @@ const Billing = () => {
 
   return (
     <div className="billings-container">
-      <Button type="primary" onClick={() => setIsModalVisible(true)}>Add Billing</Button>
+      {currentUser?.role === 'admin' && (
+        <Button type="primary" onClick={() => setIsModalVisible(true)}>Add Billing</Button>
+      )}
       <Table
         dataSource={billings}
         columns={columns}
@@ -170,6 +194,9 @@ const Billing = () => {
           <Form.Item label="Invoice ID">
             <Input value={editingBilling ? editingBilling.invoiceId : `INV-${Date.now()}`} disabled />
           </Form.Item>
+          <Form.Item name="invoiceDate" label="Invoice Date" rules={[{ required: true, message: 'Please select the invoice date' }]}>
+            <DatePicker format="DD-MM-YYYY" />
+          </Form.Item>
           <Form.Item name="appointmentId" label="Appointment" rules={[{ required: true, message: 'Please select the appointment' }]}>
             <Select placeholder="Select an appointment">
               {appointments.map(appointment => (
@@ -179,7 +206,7 @@ const Billing = () => {
               ))}
             </Select>
           </Form.Item>
-          <Form.Item name="serviceRendered" label="Service Rendered" rules={[{ required: true, message: 'Please select the service' }]}>
+          <Form.Item name="serviceRendered" label="Service" rules={[{ required: true, message: 'Please select the service' }]}>
             <Select placeholder="Select a service">
               {services.map(service => (
                 <Select.Option key={service} value={service}>
@@ -191,8 +218,8 @@ const Billing = () => {
           <Form.Item name="amount" label="Amount" rules={[{ required: true, message: 'Please enter the amount' }]}>
             <Input addonAfter="€" />
           </Form.Item>
-          <Form.Item name="insuranceCoverage" label="Insurance Coverage" rules={[{ required: true, message: 'Please select insurance coverage' }]}>
-            <Select placeholder="Select insurance coverage">
+          <Form.Item name="insuranceCoverage" label="Insurance Coverage" rules={[{ required: true, message: 'Please select if the patient has insurance coverage' }]}>
+            <Select placeholder="Please select if the patient has insurance coverage">
               <Select.Option value="Yes">Yes</Select.Option>
               <Select.Option value="No">No</Select.Option>
             </Select>
